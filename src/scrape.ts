@@ -12,7 +12,7 @@ export async function getTodaysMenuAsHtml(): Promise<string> {
 
     const $ = cheerio.load(data);
 
-    const activeDay = $(".day-wrapper.active");
+    const activeDay = $(".day-wrapper active");
 
     if (!activeDay.length) {
         throw new Error("Could not find today's menu.");
