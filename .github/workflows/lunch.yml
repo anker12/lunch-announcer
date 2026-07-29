@@ -2,8 +2,6 @@ name: Daily Lunch
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 5 * * 1-5"
 jobs:
   post-menu:
     runs-on: ubuntu-latest
