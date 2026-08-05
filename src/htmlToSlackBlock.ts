@@ -15,6 +15,12 @@ type SlackMessage = {
     text: string;
 };
 
+type Paragraph = {
+    markdown: string;
+    isHeader: boolean;
+    hasInlineDescription: boolean;
+};
+
 const section = (text: string) => ({
     type: "section" as const,
     text: {
@@ -23,15 +29,50 @@ const section = (text: string) => ({
     },
 });
 
+const toMenuSections = (paragraphs: Paragraph[]): string[] => {
+    const sections: string[] = [];
+    let index = 0;
+
+    while (index < paragraphs.length) {
+        const current = paragraphs[index];
+
+        if (current.isHeader) {
+            const next = paragraphs[index + 1];
+            const hasFollowingDescription =
+                !current.hasInlineDescription && next && !next.isHeader;
+
+            sections.push(
+                hasFollowingDescription
+                    ? `🔸 ${current.markdown}\n${next.markdown}`
+                    : `🔸 ${current.markdown}`,
+            );
+            index += hasFollowingDescription ? 2 : 1;
+            continue;
+        }
+
+        sections.push(current.markdown);
+        index += 1;
+    }
+
+    return sections;
+};
+
 export function htmlToSlackBlocks(html: string): SlackMessage {
     const $ = cheerio.load(html);
 
-    const dishes = $("p")
-        .map((_, el) => htmlToSlackMarkdown($.html(el)))
+    const paragraphs = $("p")
+        .map((_, el) => {
+            const html = $.html(el);
+            return {
+                markdown: htmlToSlackMarkdown(html),
+                isHeader: $(el).find("strong").length > 0,
+                hasInlineDescription: html.includes("<br"),
+            };
+        })
         .get()
-        .filter((dish) => dish.trim().length > 0);
+        .filter((paragraph) => paragraph.markdown.trim().length > 0);
 
-    if (dishes.length === 0) {
+    if (paragraphs.length === 0) {
         throw new Error("No <p> tags found.");
     }
 
@@ -45,9 +86,9 @@ export function htmlToSlackBlocks(html: string): SlackMessage {
         text: title,
         blocks: [
             section(`⭐ *${title}* ⭐`),
-            ...dishes
+            ...toMenuSections(paragraphs)
                 .slice(0, MAX_BLOCKS - 1)
-                .map((dish) => section(`🔸 ${dish}`)),
+                .map(section),
         ],
     };
 }
