@@ -16,8 +16,6 @@ export async function postMenu(menuAsHtml: string) {
 
     const slackBlock = htmlToSlackBlocks(menuAsHtml);
 
-    console.log(slackBlock);
-
     await client.chat.postMessage({
         channel,
         ...slackBlock,
