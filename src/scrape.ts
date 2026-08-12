@@ -46,11 +46,13 @@ export async function getTodaysMenuAsHtml(): Promise<string> {
         $(el).find("h5").text().includes(dayLabel),
     );
 
+    console.info("matchedByDate", matchedByDate.html());
+
     const today = matchedByDate.length
         ? matchedByDate.first()
         : days.filter(".active").first();
 
-    console.info(today.html());
+    console.info("today", today.html());
 
     if (!today.length) {
         throw new Error(
