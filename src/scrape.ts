@@ -50,6 +50,8 @@ export async function getTodaysMenuAsHtml(): Promise<string> {
         ? matchedByDate.first()
         : days.filter(".active").first();
 
+    console.info(today.html());
+
     if (!today.length) {
         throw new Error(
             `Could not find today's menu (${dayLabel}). ` +
