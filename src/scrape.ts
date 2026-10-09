@@ -2,6 +2,8 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 
 const MENU_URL = "https://sandsmad.dk/";
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 2_000;
 
 const REQUEST_HEADERS = {
     "User-Agent":
@@ -15,6 +17,8 @@ export interface Menu {
     title: string;
     items: string[];
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** The site labels each day as "tirsdag 28/7" / "Tuesday 28/7". */
 function copenhagenDayLabel(now: Date): string {
@@ -30,7 +34,7 @@ function copenhagenDayLabel(now: Date): string {
     return `${value("day")}/${value("month")}`;
 }
 
-export async function getTodaysMenuAsHtml(): Promise<string> {
+async function fetchTodaysMenuAsHtml(): Promise<string> {
     const response = await axios.get<string>(MENU_URL, {
         headers: REQUEST_HEADERS,
         responseType: "text",
@@ -38,7 +42,6 @@ export async function getTodaysMenuAsHtml(): Promise<string> {
     });
 
     const $ = cheerio.load(response.data);
-
     const days = $(".day-wrapper");
     const dayLabel = copenhagenDayLabel(new Date());
 
@@ -62,4 +65,26 @@ export async function getTodaysMenuAsHtml(): Promise<string> {
     }
 
     return today.find(".menu-english").html() ?? "";
+}
+
+export async function getTodaysMenuAsHtml(): Promise<string> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            return await fetchTodaysMenuAsHtml();
+        } catch (error) {
+            lastError =
+                error instanceof Error ? error : new Error(String(error));
+
+            if (attempt < MAX_ATTEMPTS) {
+                console.warn(
+                    `Menu fetch attempt ${attempt}/${MAX_ATTEMPTS} failed: ${lastError.message}. Retrying in ${RETRY_DELAY_MS / 1000}s...`,
+                );
+                await sleep(RETRY_DELAY_MS);
+            }
+        }
+    }
+
+    throw lastError!;
 }
